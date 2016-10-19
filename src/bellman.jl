@@ -21,8 +21,8 @@ function solvebellman!(v, α, system::DynamicSystem1D, xtup, ω)
         for i = K:-1:2
             objective(a) = bellmanobjective(system,t,xtup[1][i],a, ω[:,ti], Iv)
             res = optimize(objective, system.amin, system.amax)
-            v[i,ti] = -res.f_minimum
-            α[i,ti] = res.minimum
+            v[i,ti] = -Optim.minimum(res)
+            α[i,ti] = Optim.minimizer(res)
         end
     end
     α[1,:] = NaN # No policy at x=0
