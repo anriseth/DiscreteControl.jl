@@ -67,12 +67,13 @@ function onlinedecision{T1<:Real}(mpc::MPCSystem1D{T1}, x::T1,
                                   t::Int,
                                   aguess::Vector{T1},
                                   ω::UnivariateDistribution,
-                                  includemean::Bool = true)
+                                  includemean::Bool = true;
+                                  verbose::Bool = false,
+                                  optimizer::Optim.Optimizer = LBFGS(),
+                                  maxiter::Int = 1000)
     system = mpc.system
     w = createscenarios(mpc, t, ω, includemean)
     objective(a) = MCobjective(a, x, t, system, w)
-    #grad!(a, out) = gradMCobjective!(out, a, x, t, system, w)
-    #grad!(a, out) = ForwardDiff.gradient!(out, objective, a)
 
 
     # aguess contains the initial guess for
@@ -81,6 +82,7 @@ function onlinedecision{T1<:Real}(mpc::MPCSystem1D{T1}, x::T1,
     # (i.e. a[2:numsteps] should also depend on scenario)
     # so we should have a = [at, a[t+1:T-1,1], a[t+1:T-1,2],..., a[t+1:T-1,numscenarios]]
     numsteps, numscenarios = size(w)
+
     ainit = zeros(T1, (numsteps-1)*numscenarios+1)
     ainit[1] = aguess[1]
     for scenario = 1:numscenarios
@@ -88,9 +90,29 @@ function onlinedecision{T1<:Real}(mpc::MPCSystem1D{T1}, x::T1,
         ainit[j+2:j+numsteps] = aguess[2:end]
     end
 
-    res = optimize(objective, ainit, BFGS(),
-                   OptimizationOptions(autodiff=true,
-                   show_trace=true))#, extended_trace=true))
+    if typeof(optimizer) <: Optim.SecondOrderSolver
+        # TODO: allow reversediff?
+        df = TwiceDifferentiable(objective, ainit; autodiff = :forward)
+    elseif typeof(optimizer) <: Optim.FirstorderSolver
+        df = OnceDifferentiable(objective, ainit; autodiff = :forward)
+    else
+        df = NonDifferentiable(objective,ainit)
+    end
+
+    res = optimize(df,
+                   optimizer,
+                   Optim.Options(show_trace=verbose, extended_trace=verbose,
+                                 iterations = maxiter))
+
+    # TODO: we need to do Fminbox on this one
+    # res = optimize(df, ainit, fill(system.amin, length(ainit)), fill(system.amax, length(ainit)),
+    #                Fminbox{optimizer}(),
+    #                show_trace=verbose, extended_trace=verbose,
+    #                iterations = maxiter,
+    #                optimizer_o = Optim.Options(
+    #                    show_trace=verbose, extended_trace=verbose,
+    #                    iterations = maxiter))
+
 
     return Optim.minimizer(res)
 end
