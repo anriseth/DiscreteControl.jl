@@ -4,10 +4,10 @@ using Optim, ForwardDiff
 using Distributions
 
 export DynamicSystem1D, DynamicSystemTrajectory1D, OfflineSystemControl1D,
-    MPCSystem1D
+    MPCSystem1D, OLFCSystem1D
 export DynamicSystem
 export initializestate!, step!, simulatetrajectories
-export solvebellman!, onlinedecision, olfcdecision
+export solvebellman!, onlinedecision
 
 include("types.jl")
 include("bellman.jl")

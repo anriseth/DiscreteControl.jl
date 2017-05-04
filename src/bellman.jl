@@ -6,7 +6,7 @@ function bellmanobjective(system::DynamicSystem1D,
     @simd for n = 1:numsamples
         retval += system.U(t+1,x,a,ω[n]) + vt(system.f(t+1,x,a,ω[n]))
     end
-    return -retval / numsamples
+    return -retval / numsamples # Optim minimizes
 end
 
 function bellmanobjective(system::DynamicSystem1D,

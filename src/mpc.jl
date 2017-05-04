@@ -70,7 +70,8 @@ function onlinedecision{T1<:Real}(mpc::MPCSystem1D{T1}, x::T1,
                                   includemean::Bool = true;
                                   verbose::Bool = false,
                                   optimizer::Optim.Optimizer = LBFGS(),
-                                  maxiter::Int = 1000)
+                                  maxiter::Int = 1000,
+                                  autodiff::Symbol = :forward)
     system = mpc.system
     w = createscenarios(mpc, t, ω, includemean)
     objective(a) = MCobjective(a, x, t, system, w)
@@ -92,14 +93,14 @@ function onlinedecision{T1<:Real}(mpc::MPCSystem1D{T1}, x::T1,
 
     if typeof(optimizer) <: Optim.SecondOrderSolver
         # TODO: allow reversediff?
-        df = TwiceDifferentiable(objective, ainit; autodiff = :forward)
-    elseif typeof(optimizer) <: Optim.FirstorderSolver
-        df = OnceDifferentiable(objective, ainit; autodiff = :forward)
+        df = TwiceDifferentiable(objective, ainit; autodiff = autodiff)
+    elseif typeof(optimizer) <: Optim.FirstOrderSolver
+        df = OnceDifferentiable(objective, ainit; autodiff = autodiff)
     else
         df = NonDifferentiable(objective,ainit)
     end
 
-    res = optimize(df,
+    res = optimize(df, ainit,
                    optimizer,
                    Optim.Options(show_trace=verbose, extended_trace=verbose,
                                  iterations = maxiter))

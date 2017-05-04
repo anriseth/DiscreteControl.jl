@@ -43,6 +43,7 @@ function DynamicSystemTrajectory(system::DynamicSystem)
 end
 
 abstract AbstractSystemController1D
+abstract OnlineSystemController1D <: AbstractSystemController1D
 
 immutable OfflineSystemControl1D{T1<:Real} <: AbstractSystemController1D
     system::DynamicSystem1D{T1}
@@ -59,7 +60,7 @@ function OfflineSystemControl1D{T1<:Real}(system::DynamicSystem1D{T1},
     OfflineSystemControl1D(system, initialstate, α)
 end
 
-immutable MPCSystem1D{T1<:Real} <: AbstractSystemController1D
+immutable MPCSystem1D{T1<:Real} <: OnlineSystemController1D
     system::DynamicSystem1D{T1}
     initialstate::T1
     numscenarios::Vector{Int} # Number of scenarios for given time step
@@ -67,6 +68,17 @@ end
 
 function MPCSystem1D{T1<:Real}(system::DynamicSystem1D{T1}, initialstate::T1, numscenarios::Int)
     MPCSystem1D(system, initialstate, fill(numscenarios,system.T))
+end
+
+
+immutable OLFCSystem1D{T1<:Real} <: OnlineSystemController1D
+    system::DynamicSystem1D{T1}
+    initialstate::T1
+    numscenarios::Vector{Int} # Number of scenarios for given time step
+end
+
+function OLFCSystem1D{T1<:Real}(system::DynamicSystem1D{T1}, initialstate::T1, numscenarios::Int)
+    OLFCSystem1D(system, initialstate, fill(numscenarios,system.T))
 end
 
 

@@ -85,3 +85,50 @@ function simulatetrajectories{T<:Real}(oscvec::Vector{OfflineSystemControl1D{T}}
 
     return osc1trajectories, osc2trajectories
 end
+
+function simulatetrajectories(olfc::OLFCSystem1D,
+                              osc::OfflineSystemControl1D,
+                              ωmodel::UnivariateDistribution,
+                              x0,
+                              numsimulations::Int = 1000,
+                              includemean::Bool = true;
+                              ωtrue::UnivariateDistribution = ωmodel,
+                              verbose::Bool = false,
+                              optimizer::Optim.Optimizer = LBFGS(),
+                              aguessinit::Vector = fill(0.5*(olfc.system.amin+olfc.system.amax), olfc.system.T))
+    @assert olfc.system === osc.system
+    system = olfc.system
+
+    osctrajectories = Vector{DynamicSystemTrajectory1D}(numsimulations)
+    olfctrajectories = Vector{DynamicSystemTrajectory1D}(numsimulations)
+    atolfc = copy(aguessinit)
+
+    for sim = 1:numsimulations
+        trajosc = DynamicSystemTrajectory1D(system)
+        trajolfc = DynamicSystemTrajectory1D(system)
+        initializestate!(trajosc, x0)
+        initializestate!(trajolfc, x0)
+        aguess = copy(aguessinit)
+
+        for t = 0:system.T-1
+            numscenarios = olfc.numscenarios[t+1]
+            includemean = includemean || (numscenarios == 1) # Always predict the future using the mean when only one sample
+            if t > 0
+                aguess = atolfc[2:end]
+            end
+
+            atosc = osc.policy(t, trajosc.state[t+1])
+            atolfc = onlinedecision(olfc, trajolfc.state[t+1], t, aguess, ωmodel, includemean;
+                                   verbose = verbose, optimizer = optimizer)
+
+            # Update guess for next time
+            w = rand(ωtrue)
+            step!(trajosc, atosc, t, w)
+            step!(trajolfc, atolfc[1], t, w)
+        end
+        osctrajectories[sim] = trajosc
+        olfctrajectories[sim] = trajolfc
+    end
+
+    return osctrajectories, olfctrajectories
+end
