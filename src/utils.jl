@@ -52,38 +52,40 @@ function simulatetrajectories(mpc::MPCSystem1D,
 end
 
 function simulatetrajectories{T<:Real}(oscvec::Vector{OfflineSystemControl1D{T}},
-                                 ωmodel::UnivariateDistribution,
-                                 x0,
-                                 numsimulations::Int = 1000;
-                                 ωtrue::UnivariateDistribution = ωmodel)
-    @assert length(oscvec) == 2 # TODO: generalise to > 1
+                                       ωmodel::UnivariateDistribution,
+                                       x0,
+                                       numsimulations::Int = 1000;
+                                       ωtrue::UnivariateDistribution = ωmodel)
+    numosc = length(oscvec)
     systems = [osc.system for osc in oscvec]
     @assert length(unique(systems)) == 1
     system = systems[1]
-    osc1 = oscvec[1]; osc2 = oscvec[2]
 
-    osc1trajectories = Vector{DynamicSystemTrajectory1D}(numsimulations)
-    osc2trajectories = Vector{DynamicSystemTrajectory1D}(numsimulations)
+    osctrajectories = tuple([Vector{DynamicSystemTrajectory1D}(numsimulations)
+                             for k = 1:numosc]...)
 
     for sim = 1:numsimulations
-        trajosc1 = DynamicSystemTrajectory1D(system)
-        trajosc2 = DynamicSystemTrajectory1D(system)
-        initializestate!(trajosc1, x0)
-        initializestate!(trajosc2, x0)
+        trajosc = Vector{DynamicSystemTrajectory1D}(numosc)
+        for k = 1:numosc
+            trajosc[k] = DynamicSystemTrajectory1D(system)
+            initializestate!(trajosc[k], x0)
+        end
 
         for t = 0:system.T-1
-            atosc1 = osc1.policy(t, trajosc1.state[t+1])
-            atosc2 = osc2.policy(t, trajosc2.state[t+1])
+            atosc = [oscvec[k].policy(t, trajosc[k].state[t+1]) for k = 1:numosc]
             # Update guess for next time
             w = rand(ωtrue)
-            step!(trajosc1, atosc1, t, w)
-            step!(trajosc2, atosc2, t, w)
+            for k = 1:numosc
+                step!(trajosc[k], atosc[k], t, w)
+            end
+
         end
-        osc1trajectories[sim] = trajosc1
-        osc2trajectories[sim] = trajosc2
+        for k = 1:numosc
+            osctrajectories[k][sim] = trajosc[k]
+        end
     end
 
-    return osc1trajectories, osc2trajectories
+    return osctrajectories
 end
 
 function simulatetrajectories(olfc::OLFCSystem1D,
@@ -119,7 +121,7 @@ function simulatetrajectories(olfc::OLFCSystem1D,
 
             atosc = osc.policy(t, trajosc.state[t+1])
             atolfc = onlinedecision(olfc, trajolfc.state[t+1], t, aguess, ωmodel, includemean;
-                                   verbose = verbose, optimizer = optimizer)
+                                    verbose = verbose, optimizer = optimizer)
 
             # Update guess for next time
             w = rand(ωtrue)
