@@ -77,7 +77,7 @@ function onlinedecision{T1<:Real}(olfc::OLFCSystem1D{T1}, x::T1,
                    fill(system.amin, length(aguess)), fill(system.amax, length(aguess)),
                    Fminbox{optimizer}(),
                    linesearch = linesearch,
-                   show_trace=true, extended_trace=verbose,
+                   show_trace=verbose, extended_trace=verbose,
                    iterations = maxiter,
                    optimizer_o = Optim.Options(
                        show_trace=verbose, extended_trace=verbose,
