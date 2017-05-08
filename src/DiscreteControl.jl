@@ -7,7 +7,7 @@ export DynamicSystem1D, DynamicSystemTrajectory1D, OfflineSystemControl1D,
     MPCSystem1D, OLFCSystem1D
 export DynamicSystem
 export initializestate!, step!, simulatetrajectories
-export solvebellman!, onlinedecision
+export solvebellman!, onlinedecision, solveolfc!
 
 include("types.jl")
 include("bellman.jl")
