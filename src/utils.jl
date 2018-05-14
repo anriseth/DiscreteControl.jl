@@ -6,7 +6,7 @@ function simulatetrajectories(mpc::MPCSystem1D,
                               includemean::Bool = true;
                               ωtrue::UnivariateDistribution = ωmodel,
                               verbose::Bool = false,
-                              optimizer::Optim.Optimizer = LBFGS(),
+                              optimizer::Optim.AbstractOptimizer = LBFGS(),
                               aguessinit::Vector = fill(0.5*(mpc.system.amin+mpc.system.amax), mpc.system.T))
     @assert mpc.system === osc.system
     system = mpc.system
@@ -96,7 +96,7 @@ function simulatetrajectories(olfc::OLFCSystem1D,
                               includemean::Bool = true;
                               ωtrue::UnivariateDistribution = ωmodel,
                               verbose::Bool = false,
-                              optimizer::Optim.Optimizer = LBFGS(),
+                              optimizer::Optim.AbstractOptimizer = LBFGS(),
                               aguessinit::Vector = fill(0.5*(olfc.system.amin+olfc.system.amax), olfc.system.T))
     @assert olfc.system === osc.system
     system = olfc.system

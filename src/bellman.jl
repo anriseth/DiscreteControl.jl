@@ -98,7 +98,7 @@ function solvebellman!(v, α, system::DynamicSystem, xtup, ω::Tuple)
             xij = [xtup[1][i], xtup[2][j]] # TODO: CartesianIndex on xtup somehow?
             objective(a) = bellmanobjective(system,t,xij,a, ωti, system.Ubar)
             res = optimize(objective, system.amin(t,xij), system.amax(t,xij))
-            #res = optimize(objective, [0.5], LBFGS(linesearch! = LineSearches.interpbacktrack!),
+            #res = optimize(objective, [0.5], LBFGS(linesearch = LineSearches.BackTracking()),
             #               OptimizationOptions(autodiff=true))
             @inbounds vti[j,i] = -Optim.minimum(res)#[1]
             @inbounds αti[j,i] = Optim.minimizer(res)#[1]

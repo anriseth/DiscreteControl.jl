@@ -33,7 +33,7 @@ function onlinedecision{T1<:Real}(olfc::OLFCSystem1D{T1}, x::T1,
                                   ω::UnivariateDistribution,
                                   includemean::Bool = true;
                                   verbose::Bool = false,
-                                  optimizer::Optim.Optimizer = LBFGS(),
+                                  optimizer::Optim.AbstractOptimizer = LBFGS(),
                                   maxiter::Int = 1000,
                                   autodiff::Symbol = :forward)
     w = createscenarios(olfc,w,ω,includemean)
@@ -43,15 +43,14 @@ function onlinedecision{T1<:Real}(olfc::OLFCSystem1D{T1}, x::T1,
 
 end
 
-function onlinedecision{T1<:Real}(olfc::OLFCSystem1D{T1}, x::T1,
-                                  t::Int,
-                                  aguess::Vector{T1},
-                                  w::Array{T1};
-                                  verbose::Bool = false,
-                                  optimizer = LBFGS,
-                                  linesearch = LineSearches.bt3!,
-                                  maxiter::Int = 1000,
-                                  autodiff::Symbol = :forward)
+function onlinedecision(olfc::OLFCSystem1D{T1}, x::T1,
+                        t::Int,
+                        aguess::Vector{T1},
+                        w::Array{T1};
+                        verbose::Bool = false,
+                        optimizer::To = LBFGS(),
+                        maxiter::Int = 1000,
+                        autodiff::Symbol = :forward) where T1<:Real where To <: Optim.AbstractOptimizer
     system = olfc.system
     objective(a) = OLFCobjective(a, x, t, system, w)
 
@@ -60,9 +59,9 @@ function onlinedecision{T1<:Real}(olfc::OLFCSystem1D{T1}, x::T1,
     # decisions a_t,\dots,a_{T-1}
     numsteps, numscenarios = size(w)
 
-    if optimizer <: Optim.SecondOrderSolver
+    if To <: Optim.SecondOrderOptimizer
         df = TwiceDifferentiable(objective, aguess; autodiff=autodiff)
-    elseif optimizer <: Optim.FirstOrderSolver
+    elseif To <: Optim.FirstOrderOptimizer
         df = OnceDifferentiable(objective, aguess; autodiff=autodiff)
     else
         df = NonDifferentiable(objective,aguess)
@@ -73,15 +72,15 @@ function onlinedecision{T1<:Real}(olfc::OLFCSystem1D{T1}, x::T1,
     #                Optim.Options(show_trace=verbose, extended_trace=verbose,
     #                              iterations = maxiter))
 
-    res = optimize(df, aguess,
+    res = optimize(df,
                    fill(system.amin, length(aguess)), fill(system.amax, length(aguess)),
-                   Fminbox{optimizer}(),
-                   linesearch = linesearch,
-                   show_trace=verbose, extended_trace=verbose,
-                   iterations = maxiter,
-                   optimizer_o = Optim.Options(
+                   aguess,
+                   Fminbox(optimizer),
+                   Optim.Options(
                        show_trace=verbose, extended_trace=verbose,
-                       iterations = maxiter))
+                       iterations = maxiter,
+                       outer_iterations = maxiter,
+                       allow_f_increases=true))
 
     # TODO: return Optim.minimum(res) somehow as well? (for solveolfc!)
     return Optim.minimizer(res)
@@ -90,10 +89,9 @@ end
 
 function solveolfc!(α, olfc::OLFCSystem1D, xtup, w;
                     verbose::Bool = false,
-                    optimizer = LBFGS,
-                    linesearch = LineSearches.bt3!,
+                    optimizer::To = LBFGS(),
                     maxiter::Int = 1000,
-                    autodiff::Symbol = :forward)
+                    autodiff::Symbol = :forward) where To <: Optim.AbstractOptimizer
     # This finds the policy that OLFC would have created
     # for each x\in xtup, t \in 0,..,system.T
     # and saves the corresponding decision a(t,x) in α

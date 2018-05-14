@@ -42,8 +42,8 @@ function DynamicSystemTrajectory(system::DynamicSystem)
                             Vector{Float64}(system.T+1))
 end
 
-abstract AbstractSystemController1D
-abstract OnlineSystemController1D <: AbstractSystemController1D
+abstract type AbstractSystemController1D end
+abstract type OnlineSystemController1D <: AbstractSystemController1D end
 
 immutable OfflineSystemControl1D{T1<:Real} <: AbstractSystemController1D
     system::DynamicSystem1D{T1}
